@@ -805,9 +805,8 @@ class ContingencyWorkflow:
             # without resetting availability or error counters.
             self.client.set_all_distributed_computers_enabled(False)
             ready = [status for status in statuses if status.available and status.requested_workers > 0]
-            self.client.change_parameters_multiple(
-                "DistributedComputer", ("DSServerName", "Enabled"),
-                [(status.name, "YES") for status in ready],
+            self.client.set_distributed_computers_enabled(
+                [status.name for status in ready], True
             )
             self.progress({"stage": stage, "workers": sum(s.requested_workers for s in ready),
                            "computers": len(ready)})
