@@ -169,7 +169,7 @@ class PowerWorldClient:
         DistributedComputer is keyed by DSServerName.  A script such as
         ``SetData(DistributedComputer, [Enabled], ...)`` is rejected by
         PowerWorld because it does not identify the row being changed.
-        Read the keys first, then send a keyed bulk update instead.
+        Read the keys first, then send keyed single-row updates instead.
         """
         raw = self.get_parameters_multiple("DistributedComputer", ("DSServerName",), "")
         try:
@@ -177,10 +177,28 @@ class PowerWorldClient:
             names = columns[0]
         except (IndexError, TypeError, KeyError):
             return ("",)
-        rows = [(str(name), "YES" if enabled else "NO") for name in names if str(name).strip()]
-        return self.change_parameters_multiple(
-            "DistributedComputer", ("DSServerName", "Enabled"), rows
-        )
+        value = "YES" if enabled else "NO"
+        # SimAuto has inconsistent SafeArray handling for
+        # ChangeParametersMultipleElement on DistributedComputer.  There are
+        # normally only a handful of worker rows, so use the unambiguous
+        # single-element call instead of risking a COM array-shape failure.
+        result: Any = ("",)
+        for name in names:
+            if str(name).strip():
+                result = self.change_parameters_single(
+                    "DistributedComputer", ("DSServerName", "Enabled"), (str(name), value)
+                )
+        return result
+
+    def set_distributed_computers_enabled(self, names: Sequence[str], enabled: bool) -> Any:
+        value = "YES" if enabled else "NO"
+        result: Any = ("",)
+        for name in names:
+            if str(name).strip():
+                result = self.change_parameters_single(
+                    "DistributedComputer", ("DSServerName", "Enabled"), (str(name), value)
+                )
+        return result
 
     def get_parameters_multiple(
         self,
